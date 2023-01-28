@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[85]:
+# In[1]:
 
 
 #libraries
@@ -24,7 +24,7 @@ from sklearn.linear_model import Lasso
 from sksurv.util import Surv
 
 
-# In[38]:
+# In[2]:
 
 
 def fillNA(df, k_neighbors=10, index=[]):
@@ -134,20 +134,20 @@ def run_LASSO(X_train_scaled, y_train, param_grid = None):
     return keep
 
 
-# In[3]:
+# In[5]:
 
 
-INPUT_DIR = '/lustre/isaac/proj/UTK0196/dream-finrisk-data/DreamHF/'#sys.argv[1]
+INPUT_DIR = sys.argv[1]
 
 
-# In[21]:
+# In[4]:
 
 
 reads_train = pd.read_csv(INPUT_DIR+'/train/readcounts_training.csv', index_col=0)
 pheno_train = pd.read_csv(INPUT_DIR+'/train/pheno_training.csv', index_col=0)
 
 
-# In[22]:
+# In[ ]:
 
 
 pheno_train = pheno_train.dropna(subset=['Event', 'Event_time']) #should not try to correct these
@@ -155,14 +155,14 @@ reads_train = reads_train.T
 train_ids = pheno_train.index
 
 
-# In[23]:
+# In[ ]:
 
 
 reads_test = pd.read_csv(INPUT_DIR+'/test/readcounts_test.csv', index_col=0)
 pheno_test = pd.read_csv(INPUT_DIR+'/test/pheno_test.csv', index_col=0)
 
 
-# In[24]:
+# In[ ]:
 
 
 pheno_test = pheno_test.dropna(subset=['Event', 'Event_time']) #should not try to correct these
@@ -170,20 +170,20 @@ reads_test = reads_test.T
 test_ids = pheno_test.index
 
 
-# In[25]:
+# In[ ]:
 
 
 reads_full = pd.concat([reads_train, reads_test])
 pheno_full = pd.concat([pheno_train, pheno_test])
 
 
-# In[26]:
+# In[ ]:
 
 
 pheno_full = fillNA(pheno_full, index=pheno_full.index) #fast KNN
 
 
-# In[39]:
+# In[ ]:
 
 
 features = pd.merge(reads_full, pheno_full, left_index=True, right_index=True)
@@ -197,7 +197,7 @@ X_test, y_test = features.loc[test_ids], labels[test_ids]
 X_train, X_test = minmax_scale(X_train, X_test)
 
 
-# In[42]:
+# In[ ]:
 
 
 metadata = [
@@ -220,13 +220,13 @@ meta_test = X_test[metadata].copy()
 rds_test = X_test.drop(metadata, axis=1)
 
 
-# In[31]:
+# In[ ]:
 
 
 AE_train, AE_test = run_AE(rds_train, rds_test)
 
 
-# In[43]:
+# In[ ]:
 
 
 ET = meta_train.pop('Event_time')
@@ -234,13 +234,13 @@ important_cols = run_LASSO(meta_train, ET)
 important_cols = np.append(important_cols, 'Event_time')
 
 
-# In[48]:
+# In[ ]:
 
 
 meta_train['Event_time'] = ET
 
 
-# In[60]:
+# In[ ]:
 
 
 AE_train_df = AE_train.join(meta_train[important_cols])
@@ -250,14 +250,14 @@ AE_test_df = AE_test.join(meta_test[important_cols])
 AE_test_df = AE_test_df.set_index(test_ids)
 
 
-# In[63]:
+# In[ ]:
 
 
 df_AE = pd.concat([AE_train_df, AE_test_df])
 df_AE['Event'] = true_labels
 
 
-# In[76]:
+# In[ ]:
 
 
 features = df_AE.copy()
@@ -276,7 +276,7 @@ X_train = features.loc[train_ids]
 X_test = features.loc[test_ids]
 
 
-# In[77]:
+# In[ ]:
 
 
 est_cph_tree = GradientBoostingSurvivalAnalysis(
@@ -291,13 +291,13 @@ est_cph_tree.fit(X_train, y_train)
 est_cph_tree.score(X_test, y_test)
 
 
-# In[78]:
+# In[ ]:
 
 
 OUTPUT_DIR = 'UTK_Bioinformatics_Submission_1/output/'
 
 
-# In[82]:
+# In[ ]:
 
 
 CHECK_FOLDER = os.path.isdir(OUTPUT_DIR)
@@ -305,13 +305,19 @@ if not CHECK_FOLDER:
     os.makedirs(OUTPUT_DIR)
 
 
-# In[98]:
+# In[ ]:
 
 
 y_preds = est_cph_tree.predict(X_test)
 
 
-# In[99]:
+# In[ ]:
+
+
+y_preds = normalize(y_preds) #ensure range 0-1
+
+
+# In[ ]:
 
 
 data = {'SampleID' : test_ids, 'Score' : y_preds}
